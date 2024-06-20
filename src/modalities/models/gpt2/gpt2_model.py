@@ -443,12 +443,17 @@ class GPT2LLM(NNModel):
     def forward_impl(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         input_ids = inputs[self.sample_key]
         device = input_ids.device
-        b, t = input_ids.size()
-        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-        pos = torch.arange(0, t, dtype=torch.long, device=device)  # shape (t)
 
-        # forward the GPT model itself
-        tok_emb = self.transformer.wte(input_ids)  # token embeddings of shape (b, t, n_embd)
+        if "input_emb" in inputs and inputs["input_emb"] is not None:
+            tok_emb = inputs["input_emb"]
+            b, t = tok_emb.shape[:2]
+            assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
+        else:
+            b, t = input_ids.size()
+            assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
+            # forward the GPT model itself
+            tok_emb = self.transformer.wte(input_ids)  # token embeddings of shape (b, t, n_embd)
+        pos = torch.arange(0, t, dtype=torch.long, device=device)
 
         if self.poe_type is PositionTypes.ABSOLUTE:
             pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (t, n_embd)
@@ -465,3 +470,6 @@ class GPT2LLM(NNModel):
 
     def forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         return self.forward_impl(inputs)
+
+    def get_input_embeddings(self):
+        return self.transformer.wte
