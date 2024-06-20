@@ -117,6 +117,58 @@ class VisionTransformerBlock(nn.Module):
         return x
 
 
+class PerceiverResamplerConfig(BaseModel):
+    n_embd: Annotated[int, Field(ge=1)] = 768
+    n_head: Annotated[int, Field(ge=1)] = 8
+    n_layer: Annotated[int, Field(ge=1)] = 12
+    n_latents: Annotated[int, Field(ge=1)] = 64  # seq length of outputs
+    block_size: Annotated[int, Field(ge=1)] = 196  # seq length of inputs
+    ffn_hidden: Annotated[int, Field(ge=1)] = 3072
+    bias: bool = True
+    dropout: Annotated[float, Field(ge=0.0)] = 0.0
+    attention_config: AttentionConfig
+
+
+class PerceiverResampler(nn.Module):
+    def __init__(
+        self,
+        n_embd: int = 768,
+        n_head: int = 8,
+        n_layer: int = 12,
+        n_latents: int = 64,
+        block_size: int = 196,
+        ffn_hidden: int = 3072,
+        bias: bool = True,
+        dropout: float = 0.0,
+        attention_config: AttentionConfig = None,
+    ) -> None:
+        super().__init__()
+        self.positional_embedding_fn = nn.Embedding(num_embeddings=block_size, embedding_dim=n_embd)
+        self.blocks = nn.ModuleList(
+            [
+                PerceiverTransformerBlock(
+                    n_embd=n_embd,
+                    n_head=n_head,
+                    ffn_hidden=ffn_hidden,
+                    bias=bias,
+                    dropout=dropout,
+                    attention_config=attention_config,
+                )
+                for _ in range(n_layer)
+            ]
+        )
+        self.latents = nn.Parameter(torch.randn(n_latents, n_embd))  # [R,d]
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x: torch.Tensor):
+        B = x.shape[0]
+        x = self.dropout(x + self.positional_embedding_fn.weight)
+        latents = self.latents.repeat(B, 1, 1)  # [b,R,d] with R<<T*S
+        for block in self.blocks:
+            latents = block(x, latents)
+        return latents
+
+
 # TODO: extend to all modalities based on the original paper (https://arxiv.org/pdf/2103.03206)!
 # TODO: extend this to work with video and images!
 class PerceiverTransformerBlock(nn.Module):
