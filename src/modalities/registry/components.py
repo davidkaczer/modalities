@@ -84,6 +84,8 @@ from modalities.loss_functions import (
     NCELoss,
     NCELossConfig,
 )
+from modalities.models.anymal.anymal_model import AnyMAL, AnyMALConfig
+from modalities.models.anymal.collator import AnyMALCollateFnConfig, AnyMALCollatorFn
 from modalities.models.coca.coca_model import CoCa, CoCaConfig
 from modalities.models.coca.collator import CoCaCollateFnConfig, CoCaCollatorFn
 from modalities.models.components.layer_norms import LayerNormConfig, RMSLayerNorm, RMSLayerNormConfig
@@ -130,6 +132,7 @@ COMPONENTS = [
     ComponentEntity("model", "checkpointed", ModelFactory.get_checkpointed_model, CheckpointedModelConfig),
     ComponentEntity("model", "fsdp_wrapped", ModelFactory.get_fsdp_wrapped_model, FSDPWrappedModelConfig),
     ComponentEntity("model", "coca", CoCa, CoCaConfig),
+    ComponentEntity("model", "anymal", AnyMAL, AnyMALConfig),
     # losses
     ComponentEntity("loss", "cross_entropy_loss", CrossEntropyLoss, CrossEntropyLossConfig),
     ComponentEntity("loss", "nce_loss", NCELoss, NCELossConfig),
@@ -195,6 +198,7 @@ COMPONENTS = [
     # collators
     ComponentEntity("collate_fn", "gpt_2_llm_collator", GPT2LLMCollateFn, GPT2LLMCollateFnConfig),
     ComponentEntity("collate_fn", "coca_collator", CoCaCollatorFn, CoCaCollateFnConfig),
+    ComponentEntity("collate_fn", "anymal_collator", AnyMALCollatorFn, AnyMALCollateFnConfig),
     # data loaders
     ComponentEntity("data_loader", "default", DataloaderFactory.get_dataloader, LLMDataLoaderConfig),
     ComponentEntity("data_loader", "web_loader", DataloaderFactory.get_web_loader, WebLoaderConfig),
