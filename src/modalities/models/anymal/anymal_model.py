@@ -9,8 +9,8 @@ from modalities.models.audio_transformer.audio_transformer_model import AudioTra
 from modalities.models.gpt2.gpt2_model import GPT2LLM, GPT2LLMConfig
 from modalities.models.model import NNModel
 from modalities.models.vision_transformer.vision_transformer_model import (
-    PerceiverResampler,
-    PerceiverResamplerConfig,
+    Perceiver,
+    PerceiverConfig,
     VisionTransformer,
     VisionTransformerConfig,
 )
@@ -33,15 +33,15 @@ class AnyMALConfig(BaseModel):
             path to trained checkpoint for text decoder
         vision_encoder_config (`VisionTransformerConfig`), required if training an image-text model:
             config for trained vision encoder
-        vision_projector_config (`PerceiverResamplerConfig`), required if training an image-text model:
-            config for Perceiver Resampler, which projects embeddings from the vision encoder
+        vision_projector_config (`PerceiverConfig`), required if training an image-text model:
+            config for Perceiver, which projects embeddings from the vision encoder
             to the text token embedding space
         vision_encoder_checkpoint_path (`str`), required if training an image-text model:
             path to trained checkpoint for image encoder
         audio_encoder_config (`AudioTransformerConfig`), required if training an audio-text model:
             config for trained audio encoder
-        audio_projector_config (`PerceiverResamplerConfig`), required if training an audio-text model:
-            config for Perceiver Resampler, which projects embeddings from the audio encoder
+        audio_projector_config (`PerceiverConfig`), required if training an audio-text model:
+            config for Perceiver, which projects embeddings from the audio encoder
             to the text token embedding space
         audio_encoder_checkpoint_path (`str`), required if training an audio-text model:
             path to trained checkpoint for audio encoder
@@ -57,10 +57,10 @@ class AnyMALConfig(BaseModel):
     prediction_key: str
     text_decoder_checkpoint_path: str = None
     vision_encoder_config: VisionTransformerConfig = None
-    vision_projector_config: PerceiverResamplerConfig = None
+    vision_projector_config: PerceiverConfig = None
     vision_encoder_checkpoint_path: str = None
     audio_encoder_config: AudioTransformerConfig = None
-    audio_projector_config: PerceiverResamplerConfig = None
+    audio_projector_config: PerceiverConfig = None
     audio_encoder_checkpoint_path: str = None
     training_stage: AnyMALTrainingStage = AnyMALTrainingStage.MODALITY_ALIGNMENT
 
@@ -77,10 +77,10 @@ class AnyMAL(NNModel):
         prediction_key: str,
         text_decoder_checkpoint_path: str = None,
         vision_encoder_config: VisionTransformerConfig = None,
-        vision_projector_config: PerceiverResamplerConfig = None,
+        vision_projector_config: PerceiverConfig = None,
         vision_encoder_checkpoint_path: str = None,
         audio_encoder_config: AudioTransformerConfig = None,
-        audio_projector_config: PerceiverResamplerConfig = None,
+        audio_projector_config: PerceiverConfig = None,
         audio_encoder_checkpoint_path: str = None,
         training_stage: AnyMALTrainingStage = AnyMALTrainingStage.MODALITY_ALIGNMENT,
         seed: int = None,
@@ -103,7 +103,7 @@ class AnyMAL(NNModel):
             self.modality_prediction_key = vision_encoder_config.prediction_key
             self.modality_encoder = VisionTransformer(**dict(vision_encoder_config))
             vision_projector_config.block_size = self.modality_encoder.block_size
-            self.modality_projector = PerceiverResampler(**dict(vision_projector_config))
+            self.modality_projector = Perceiver(**dict(vision_projector_config))
             if vision_encoder_checkpoint_path is not None:
                 checkpoint = torch.load(vision_encoder_checkpoint_path)
                 self.modality_encoder.load_state_dict(checkpoint)
@@ -115,7 +115,7 @@ class AnyMAL(NNModel):
             audio_projector_config.block_size = self.modality_encoder.block_size
             self.modality_projector = nn.Sequential(
                 nn.Linear(self.audio_encoder_config.n_embd, audio_projector_config.n_embd),
-                PerceiverResampler(**dict(audio_projector_config)),
+                Perceiver(**dict(audio_projector_config)),
             )
             if audio_encoder_checkpoint_path is not None:
                 checkpoint = torch.load(audio_encoder_checkpoint_path)

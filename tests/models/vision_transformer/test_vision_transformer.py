@@ -8,9 +8,9 @@ from modalities.models.vision_transformer.vision_transformer_model import Vision
 from tests.conftest import _ROOT_DIR
 
 
-def test_vision_transformer():
+def test_image_vision_transformer():
     # Create model
-    config_file_path = _ROOT_DIR / Path("tests/models/vision_transformer/vision_transformer_config.yaml")
+    config_file_path = _ROOT_DIR / Path("tests/models/vision_transformer/vision_transformer_image_config.yaml")
     config_dict = load_app_config_dict(config_file_path=config_file_path)
     config = VisionTransformerConfig.model_validate(config_dict)
     model = VisionTransformer(**dict(config))
@@ -33,30 +33,32 @@ def test_vision_transformer():
     assert "logits" in out
     assert out["logits"].shape == (1, 1000)
 
+
+def test_video_vision_transformer():
     # Test for video input
     # Create model
-    config_file_path2 = _ROOT_DIR / Path("tests/models/vision_transformer/vision_transformer_config2.yaml")
-    config_dict2 = load_app_config_dict(config_file_path=config_file_path2)
-    config2 = VisionTransformerConfig.model_validate(config_dict2)
-    model2 = VisionTransformer(**dict(config2))
+    config_file_path = _ROOT_DIR / Path("tests/models/vision_transformer/vision_transformer_video_config.yaml")
+    config_dict = load_app_config_dict(config_file_path=config_file_path)
+    config = VisionTransformerConfig.model_validate(config_dict)
+    model = VisionTransformer(**dict(config))
 
     # Create dummy inputs
-    dummy_input_video = torch.randn(1, 3, 16, 224, 224)  # [b c T h w]
-    dummy_input2 = dict(videos=dummy_input_video)
+    dummy_input_video = torch.randn(1, 16, 3, 224, 224)  # [b T c h w]
+    dummy_input = dict(videos=dummy_input_video)
 
     # Create optimizer
-    optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.001, momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     # Run one training step
-    optimizer2.zero_grad()
-    out2 = model2(dummy_input2)
-    loss2 = out2["logits"].sum()
-    loss2.backward()
-    optimizer2.step()
+    optimizer.zero_grad()
+    out = model(dummy_input)
+    loss = out["logits"].sum()
+    loss.backward()
+    optimizer.step()
 
     # Test outputs
-    assert "logits" in out2
-    assert out2["logits"].shape == (1, 1000)
+    assert "logits" in out
+    assert out["logits"].shape == (1, config.n_latents, config.n_embd)
 
 
 @pytest.mark.parametrize(

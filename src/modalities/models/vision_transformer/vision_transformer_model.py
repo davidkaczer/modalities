@@ -117,11 +117,13 @@ class VisionTransformerBlock(nn.Module):
         return x
 
 
-class PerceiverResamplerConfig(BaseModel):
+class PerceiverConfig(BaseModel):
     n_embd: Annotated[int, Field(ge=1)] = 768
     n_head: Annotated[int, Field(ge=1)] = 8
     n_layer: Annotated[int, Field(ge=1)] = 12
+    n_self_attn_layers_per_block: Annotated[int, Field(ge=1)] = 1  # self attn layers per cross attn layer
     n_latents: Annotated[int, Field(ge=1)] = 64  # seq length of outputs
+    n_frames: Annotated[int, Field(ge=1)] = 1  # optional time dimension for inputs
     block_size: Annotated[int, Field(ge=1)] = 196  # seq length of inputs
     ffn_hidden: Annotated[int, Field(ge=1)] = 3072
     bias: bool = True
@@ -129,13 +131,34 @@ class PerceiverResamplerConfig(BaseModel):
     attention_config: AttentionConfig
 
 
-class PerceiverResampler(nn.Module):
+class Perceiver(nn.Module):
+    """Perceiver / Perceiver Resampler
+
+    This is a transformer based architecture that performs cross and self attention
+    to compress and embed sequences of any modality inputs. The purpose is to represent
+    potentially long variable-length sequences (such as spatio-temporal embeddings from videos, or audio embeddings)
+    by a (shorter) fixed-length sequence.
+
+    The implementation is based on the following paper:
+    paper: 'Flamingo: a Visual Language Model for Few-Shot Learning'
+    Link: https://github.com/mlfoundations/open_flamingo
+
+    A modification compared to the Perceiver Resampler from Flamingo is that we add self-attention layers
+    between the cross-attention layers as in the original Perceiver paper:
+    paper: Perceiver: General Perception with Iterative Attention
+    Link: http://proceedings.mlr.press/v139/jaegle21a/jaegle21a.pdf
+
+
+    """
+
     def __init__(
         self,
         n_embd: int = 768,
         n_head: int = 8,
         n_layer: int = 12,
+        n_self_attn_layers_per_block=2,
         n_latents: int = 64,
+        n_frames: int = 1,
         block_size: int = 196,
         ffn_hidden: int = 3072,
         bias: bool = True,
@@ -144,7 +167,13 @@ class PerceiverResampler(nn.Module):
     ) -> None:
         super().__init__()
         self.positional_embedding_fn = nn.Embedding(num_embeddings=block_size, embedding_dim=n_embd)
-        self.blocks = nn.ModuleList(
+        self.n_frames = n_frames
+
+        if self.n_frames > 1:
+            self.time_embd = nn.Parameter(torch.randn(self.n_frames, 1, n_embd))
+            self.rearrange = Rearrange("b T S D -> b (T S) D")
+
+        self.perceiver_blocks = nn.ModuleList(
             [
                 PerceiverTransformerBlock(
                     n_embd=n_embd,
@@ -153,6 +182,7 @@ class PerceiverResampler(nn.Module):
                     bias=bias,
                     dropout=dropout,
                     attention_config=attention_config,
+                    n_self_attn_layers=n_self_attn_layers_per_block,
                 )
                 for _ in range(n_layer)
             ]
@@ -162,27 +192,24 @@ class PerceiverResampler(nn.Module):
 
     def forward(self, x: torch.Tensor):
         B = x.shape[0]
-        x = self.dropout(x + self.positional_embedding_fn.weight)
+        if self.n_frames > 1:
+            x = self.dropout(x + self.time_embd.repeat(B, 1, 1, 1))
+            x = self.dropout(x + self.positional_embedding_fn.weight)
+            x = self.rearrange(x)
+        else:
+            x = self.dropout(x + self.positional_embedding_fn.weight)
         latents = self.latents.repeat(B, 1, 1)  # [b,R,d] with R<<T*S
-        for block in self.blocks:
+        for block in self.perceiver_blocks:
             latents = block(x, latents)
         return latents
 
 
-# TODO: extend to all modalities based on the original paper (https://arxiv.org/pdf/2103.03206)!
-# TODO: extend this to work with video and images!
 class PerceiverTransformerBlock(nn.Module):
-    """Perceiver Resampler
-
-    This is a transformer based architecture that performs cross and self attention to compress and embed video inputs.
-    paper: 'Flamingo: a Visual Language Model for Few-Shot Learning'
-    Link: https://github.com/mlfoundations/open_flamingo
-    """
-
     def __init__(
         self,
         n_embd: int = 768,
         n_head: int = 8,
+        n_self_attn_layers=2,
         ffn_hidden: int = 3072,
         bias: bool = True,
         dropout: float = 0.0,
@@ -190,21 +217,48 @@ class PerceiverTransformerBlock(nn.Module):
     ) -> None:
         super().__init__()
         self.norm_latents = nn.LayerNorm(n_embd)
-        self.norm = nn.LayerNorm(n_embd)
-        self.attention = MultiHeadAttention(
+        self.norm_inputs = nn.LayerNorm(n_embd)
+        self.cross_attention = MultiHeadAttention(
             n_embd=n_embd,
             n_head=n_head,
             attention_config=attention_config,
             attention_type=AttentionType.CROSS_ATTENTION,
         )
-        self.mlp = MLP(in_features=n_embd, hidden_features=ffn_hidden, bias=bias, dropout=dropout)
+
+        self.cross_attn_mlp = nn.Sequential(
+            nn.LayerNorm(n_embd), MLP(in_features=n_embd, hidden_features=ffn_hidden, bias=bias, dropout=dropout)
+        )
+        self.self_attn_layers = nn.ModuleList([])
+        for _ in range(n_self_attn_layers):
+            self.self_attn_layers.append(
+                nn.ModuleList(
+                    [
+                        nn.Sequential(
+                            nn.LayerNorm(n_embd),
+                            MultiHeadAttention(
+                                n_embd=n_embd,
+                                n_head=n_head,
+                                attention_config=attention_config,
+                                attention_type=AttentionType.NON_CAUSAL_SELF_ATTENTION,
+                            ),
+                        ),
+                        nn.Sequential(
+                            nn.LayerNorm(n_embd),
+                            MLP(in_features=n_embd, hidden_features=ffn_hidden, bias=bias, dropout=dropout),
+                        ),
+                    ]
+                )
+            )
 
     def forward(self, x: torch.Tensor, latents: torch.Tensor) -> torch.Tensor:
         latents = self.norm_latents(latents)
-        x = self.norm(x)
-        context = torch.cat((x, latents), dim=-2)  # video features and the latent together
-        latents = latents + self.attention(latents, context=context)
-        latents = latents + self.mlp(latents)
+        x = self.norm_inputs(x)
+        context = torch.cat((x, latents), dim=-2)  # optional?
+        latents = latents + self.cross_attention(latents, context=context)
+        latents = latents + self.cross_attn_mlp(latents)
+        for attn, ff in self.self_attn_layers:
+            latents = attn(latents) + latents
+            latents = ff(latents) + latents
         return latents
 
 
@@ -260,27 +314,37 @@ class VisionTransformer(nn.Module):
             self.time_embd = nn.Parameter(torch.randn(num_video_frames, 1, n_embd))  # [T,1,d]
             if add_cls_token:
                 n_latents += 1  # to count for a video level cls token
-            self.latents = nn.Parameter(torch.randn(n_latents, n_embd))  # [R,d]
+            self.perceiver_resampler = Perceiver(
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                n_latents=n_latents,
+                block_size=self.block_size,
+                ffn_hidden=ffn_hidden,
+                bias=bias,
+                dropout=dropout,
+                n_self_attn_layers_per_block=1,
+                n_frames=num_video_frames,
+                attention_config=attention_config,
+            )
             self.rearrange = Rearrange("b T S D -> b (T S) D")
         else:
             self.embedding_fn = ImagePatchEmbedding(n_img_channels, n_embd, patch_size, patch_stride, add_cls_token)
+            self.positional_embedding_fn = nn.Embedding(num_embeddings=self.block_size, embedding_dim=n_embd)  # [S D]
 
-        self.positional_embedding_fn = nn.Embedding(num_embeddings=self.block_size, embedding_dim=n_embd)  # [S D]
-        block_classes = {"Video": PerceiverTransformerBlock, "Image": VisionTransformerBlock}
-
-        self.blocks = nn.ModuleList(
-            [
-                block_classes[self.vision_input](
-                    n_embd=n_embd,
-                    n_head=n_head,
-                    ffn_hidden=ffn_hidden,
-                    bias=bias,
-                    dropout=dropout,
-                    attention_config=attention_config,
-                )
-                for _ in range(n_layer)
-            ]
-        )
+            self.blocks = nn.ModuleList(
+                [
+                    VisionTransformerBlock(
+                        n_embd=n_embd,
+                        n_head=n_head,
+                        ffn_hidden=ffn_hidden,
+                        bias=bias,
+                        dropout=dropout,
+                        attention_config=attention_config,
+                    )
+                    for _ in range(n_layer)
+                ]
+            )
 
     def forward_images(self, x: torch.Tensor) -> torch.Tensor:
         x = self.embedding_fn(x)
@@ -306,13 +370,7 @@ class VisionTransformer(nn.Module):
         """
         x = self.embedding_fn(x)  # [b T S D]
         b, T = x.shape[:2]
-        # TODO: check this!
-        x = self.dropout(x + self.positional_embedding_fn.weight)
-        x = self.dropout(x + self.time_embd.repeat(b, 1, 1, 1))
-        x = self.rearrange(x)  # [b T*S D]
-        latents = self.latents.repeat(b, 1, 1)  # [b,R,d] with R<<T*S
-        for block in self.blocks:
-            latents = block(x, latents)
+        latents = self.perceiver_resampler(x)
         return latents
 
     def forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:  # TODO video adapt

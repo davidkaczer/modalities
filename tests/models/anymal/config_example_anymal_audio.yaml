@@ -187,6 +187,7 @@ model:
       n_embd: 768
       n_head: 8
       n_layer: 1
+      n_self_attn_layers_per_block: 1
       n_latents: 32
       block_size: ${train_audio_transform.config.block_size_audio_encoder}
       ffn_hidden: 3072

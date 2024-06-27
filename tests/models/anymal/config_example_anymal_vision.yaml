@@ -186,7 +186,9 @@ model:
       n_embd: 768
       n_head: 8
       n_layer: 6
+      n_self_attn_layers_per_block: 1
       n_latents: 64
+      n_frames: 1
       block_size: 196
       ffn_hidden: 3072
       bias: true
