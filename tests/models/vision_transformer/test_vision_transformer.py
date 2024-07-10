@@ -8,16 +8,33 @@ from modalities.models.vision_transformer.vision_transformer_model import Vision
 from tests.conftest import _ROOT_DIR
 
 
-def test_image_vision_transformer():
+@pytest.mark.parametrize(
+    "input,sample_key,n_classes,num_video_frames,add_cls_token,out_put",
+    [
+        (torch.randn(1, 3, 224, 224), "images", 1000, 1, True, (1, 1000)),
+        (torch.randn(1, 3, 224, 224), "images", None, 1, True, (1, 197, 768)),
+        (torch.randn(1, 3, 224, 224), "images", None, 1, False, (1, 196, 768)),
+        (torch.randn(1, 3, 224, 224), "images", 1000, 1, False, (1, 1000)),
+        (torch.randn(1, 16, 3, 224, 224), "videos", 1000, 16, True, (1, 1000)),
+        (torch.randn(1, 16, 3, 224, 224), "videos", None, 16, True, (1, 65, 768)),
+        (torch.randn(1, 16, 3, 224, 224), "videos", None, 16, False, (1, 64, 768)),
+        (torch.randn(1, 16, 3, 224, 224), "videos", 1000, 16, False, (1, 1000)),
+    ],
+)
+def test_vision_transformer(input, sample_key, n_classes, num_video_frames, add_cls_token, out_put):
     # Create model
-    config_file_path = _ROOT_DIR / Path("tests/models/vision_transformer/vision_transformer_image_config.yaml")
+    config_file_path = _ROOT_DIR / Path("tests/models/vision_transformer/vision_transformer_config.yaml")
     config_dict = load_app_config_dict(config_file_path=config_file_path)
     config = VisionTransformerConfig.model_validate(config_dict)
+    config.sample_key = sample_key
+    config.n_classes = n_classes
+    config.num_video_frames = num_video_frames
+    config.add_cls_token = add_cls_token
+
     model = VisionTransformer(**dict(config))
 
     # Create dummy inputs
-    dummy_input_image = torch.randn(1, 3, 224, 224)
-    dummy_input = dict(images=dummy_input_image)
+    dummy_input = {sample_key: input}
 
     # Create optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -31,34 +48,7 @@ def test_image_vision_transformer():
 
     # Test outputs
     assert "logits" in out
-    assert out["logits"].shape == (1, 1000)
-
-
-def test_video_vision_transformer():
-    # Test for video input
-    # Create model
-    config_file_path = _ROOT_DIR / Path("tests/models/vision_transformer/vision_transformer_video_config.yaml")
-    config_dict = load_app_config_dict(config_file_path=config_file_path)
-    config = VisionTransformerConfig.model_validate(config_dict)
-    model = VisionTransformer(**dict(config))
-
-    # Create dummy inputs
-    dummy_input_video = torch.randn(1, 16, 3, 224, 224)  # [b T c h w]
-    dummy_input = dict(videos=dummy_input_video)
-
-    # Create optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-
-    # Run one training step
-    optimizer.zero_grad()
-    out = model(dummy_input)
-    loss = out["logits"].sum()
-    loss.backward()
-    optimizer.step()
-
-    # Test outputs
-    assert "logits" in out
-    assert out["logits"].shape == (1, config.n_latents, config.n_embd)
+    assert out["logits"].shape == out_put
 
 
 @pytest.mark.parametrize(

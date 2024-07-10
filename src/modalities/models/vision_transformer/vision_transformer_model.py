@@ -19,6 +19,7 @@ class VisionTransformerConfig(BaseModel):
     attention_config: AttentionConfig = None
     n_head: Annotated[int, Field(ge=1)] = 8
     n_embd: Annotated[int, Field(ge=1)] = 768
+    ffn_hidden: Annotated[int, Field(ge=1)] = 3072
     dropout: Annotated[float, Field(ge=0.0)] = 0.0
     patch_size: Annotated[int, Field(ge=1)] = 16
     patch_stride: Annotated[int, Field(ge=1)] = 16
@@ -314,6 +315,7 @@ class VisionTransformer(nn.Module):
             self.time_embd = nn.Parameter(torch.randn(num_video_frames, 1, n_embd))  # [T,1,d]
             if add_cls_token:
                 n_latents += 1  # to count for a video level cls token
+                self.block_size -= 1
             self.perceiver_resampler = Perceiver(
                 n_embd=n_embd,
                 n_head=n_head,
