@@ -51,4 +51,5 @@ class TorchCheckpointLoading(CheckpointLoadingIF):
         return model
 
     def load_optimizer_checkpoint(self, optimizer: Optimizer, model: nn.Module, file_path: Path) -> Optimizer:
-        raise NotImplementedError  # TODO future work
+        optimizer.load_state_dict(torch.load(file_path))
+        return optimizer

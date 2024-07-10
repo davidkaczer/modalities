@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Dict
 
 import torch.nn as nn
@@ -7,11 +6,6 @@ from torch.optim import Optimizer
 from modalities.batch import EvaluationResultBatch
 from modalities.checkpointing.checkpoint_saving_execution import CheckpointSavingExecutionABC
 from modalities.checkpointing.checkpoint_saving_strategies import CheckpointSavingStrategyIF
-
-
-class CheckpointEntityType(Enum):
-    MODEL = "model"
-    OPTIMIZER = "optimizer"
 
 
 class CheckpointSaving:

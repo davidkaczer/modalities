@@ -106,6 +106,11 @@ class FSDPCheckpointSavingConfig(BaseModel):
     experiment_id: str
 
 
+class TorchCheckpointSavingConfig(BaseModel):
+    checkpoint_path: Path
+    experiment_id: str
+
+
 class CheckpointSavingConfig(BaseModel):
     checkpoint_saving_strategy: PydanticCheckpointSavingStrategyIFType
     checkpoint_saving_execution: PydanticCheckpointSavingExecutionIFType

@@ -15,6 +15,7 @@ from modalities.checkpointing.checkpoint_saving_strategies import (
 from modalities.checkpointing.fsdp.fsdp_checkpoint_loading import FSDPCheckpointLoading
 from modalities.checkpointing.fsdp.fsdp_checkpoint_saving import FSDPCheckpointSaving
 from modalities.checkpointing.torch.torch_checkpoint_loading import TorchCheckpointLoading
+from modalities.checkpointing.torch.torch_checkpoint_saving import TorchCheckpointSaving
 from modalities.config.config import (
     AdamOptimizerConfig,
     AdamWOptimizerConfig,
@@ -52,6 +53,7 @@ from modalities.config.config import (
     SimpleProgressSubscriberConfig,
     StepLRSchedulerConfig,
     TorchCheckpointLoadingConfig,
+    TorchCheckpointSavingConfig,
     WandBEvaluationResultSubscriberConfig,
     WebLoaderConfig,
 )
@@ -222,6 +224,7 @@ COMPONENTS = [
     ),
     # checkpoint saving execution
     ComponentEntity("checkpoint_saving_execution", "fsdp", FSDPCheckpointSaving, FSDPCheckpointSavingConfig),
+    ComponentEntity("checkpoint_saving_execution", "torch", TorchCheckpointSaving, TorchCheckpointSavingConfig),
     # checkpoint loading
     ComponentEntity("checkpoint_loading", "fsdp", FSDPCheckpointLoading, FSDPCheckpointLoadingConfig),
     ComponentEntity("checkpoint_loading", "torch", TorchCheckpointLoading, TorchCheckpointLoadingConfig),

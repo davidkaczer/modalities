@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
 from modalities.checkpointing.fsdp.fsdp_checkpoint_saving import FSDPCheckpointSaving
+from modalities.checkpointing.torch.torch_checkpoint_saving import TorchCheckpointSaving
 
 
 @pytest.mark.skip
@@ -44,6 +45,14 @@ def test_delete_checkpoint(tmpdir):
     model_path = directory / experiment_id / f"eid_{experiment_id}-model-num_steps_101.bin"
     model_path.write_text(CONTENT)
 
+    # FSDP
     checkpoint_saving = FSDPCheckpointSaving(checkpoint_path=directory, experiment_id=experiment_id, global_rank=0)
+    checkpoint_saving._delete_checkpoint(train_step_id=100)
+    assert is_empty_directory((directory / experiment_id).__str__())
+
+    # Torch
+    optimizer_path.write_text(CONTENT)
+    model_path.write_text(CONTENT)
+    checkpoint_saving = TorchCheckpointSaving(checkpoint_path=directory, experiment_id=experiment_id)
     checkpoint_saving._delete_checkpoint(train_step_id=100)
     assert is_empty_directory((directory / experiment_id).__str__())
