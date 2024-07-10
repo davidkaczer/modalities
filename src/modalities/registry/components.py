@@ -105,16 +105,18 @@ from modalities.models.model_factory import ModelFactory
 from modalities.optimizers.lr_schedulers import DummyLRScheduler
 from modalities.optimizers.optimizer_factory import OptimizerFactory
 from modalities.tokenization.tokenizer_wrapper import PreTrainedHFTokenizer, PreTrainedSPTokenizer
-from modalities.training.gradient_clipping.fsdp_gradient_clipper import (
+from modalities.training.gradient_clipping.fsdp.fsdp_gradient_clipper import (
     DummyGradientClipper,
     FSDPGradientClipper,
     FSDPLoggingOnlyGradientClipper,
 )
-from modalities.training.gradient_clipping.fsdp_gradient_clipper_config import (
+from modalities.training.gradient_clipping.fsdp.fsdp_gradient_clipper_config import (
     DummyGradientClipperConfig,
     FSDPDummyGradientClipperConfig,
     FSDPGradientClipperConfig,
 )
+from modalities.training.gradient_clipping.torch.torch_gradient_clipper import TorchGradientClipper
+from modalities.training.gradient_clipping.torch.torch_gradient_clipper_config import TorchGradientClipperConfig
 
 
 @dataclass
@@ -271,4 +273,5 @@ COMPONENTS = [
         "gradient_clipper", "fsdp_logging_only", FSDPLoggingOnlyGradientClipper, FSDPDummyGradientClipperConfig
     ),
     ComponentEntity("gradient_clipper", "dummy", DummyGradientClipper, DummyGradientClipperConfig),
+    ComponentEntity("gradient_clipper", "torch", TorchGradientClipper, TorchGradientClipperConfig),
 ]

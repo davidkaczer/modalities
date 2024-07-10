@@ -1,14 +1,7 @@
 import torch
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
-from modalities.config.lookup_enum import LookupEnum
-from modalities.training.gradient_clipping.gradient_clipper import GradientClipperIF
-
-
-class GradientClippingMode(LookupEnum):
-    P1_NORM = 1  # manhattan norm based clipping.
-    P2_NORM = 2  # Euclidean norm based clipping.
-    MAX_NORM = "inf"  # Maximum norm based clipping.
+from modalities.training.gradient_clipping.gradient_clipper import GradientClipperIF, GradientClippingMode
 
 
 class FSDPGradientClipper(GradientClipperIF):
