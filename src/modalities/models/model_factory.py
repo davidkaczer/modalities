@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -7,6 +7,7 @@ from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import ShardingStrategy
 
 from modalities.checkpointing.checkpoint_loading import CheckpointLoadingIF
+from modalities.config.config import PrecisionEnum
 from modalities.running_env.env_utils import MixedPrecisionSettings
 from modalities.running_env.fsdp.fsdp_auto_wrapper import FSDPTransformerAutoWrapPolicyFactory
 
@@ -44,3 +45,11 @@ class ModelFactory:
             sync_module_states=sync_module_states,
         )
         return fsdp_model
+
+    @staticmethod
+    def get_torch_model(model: nn.Module, device: torch.device, precision: Optional[PrecisionEnum] = None) -> nn.Module:
+        if precision is not None:
+            model = model.to(device, dtype=precision.value)
+        else:
+            model = model.to(device)
+        return model

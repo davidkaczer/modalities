@@ -232,6 +232,16 @@ class FSDPWrappedModelConfig(BaseModel):
         return parse_enum_by_name(name=name, enum_type=ShardingStrategy)
 
 
+class TorchModelConfig(BaseModel):
+    model: PydanticPytorchModuleType
+    device: PydanticPytorchDeviceType
+    precision: Optional[PrecisionEnum] = None
+
+    @field_validator("device", mode="before")
+    def parse_device(cls, device) -> PydanticPytorchDeviceType:
+        return parse_torch_device(device)
+
+
 class PreTrainedHFTokenizerConfig(BaseModel):
     pretrained_model_name_or_path: str
     max_length: Annotated[int, Field(strict=True, ge=0)]

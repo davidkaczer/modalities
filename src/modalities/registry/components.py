@@ -54,6 +54,7 @@ from modalities.config.config import (
     StepLRSchedulerConfig,
     TorchCheckpointLoadingConfig,
     TorchCheckpointSavingConfig,
+    TorchModelConfig,
     WandBEvaluationResultSubscriberConfig,
     WebLoaderConfig,
 )
@@ -133,6 +134,7 @@ COMPONENTS = [
     ),
     ComponentEntity("model", "checkpointed", ModelFactory.get_checkpointed_model, CheckpointedModelConfig),
     ComponentEntity("model", "fsdp_wrapped", ModelFactory.get_fsdp_wrapped_model, FSDPWrappedModelConfig),
+    ComponentEntity("model", "torch_model", ModelFactory.get_torch_model, TorchModelConfig),
     ComponentEntity("model", "coca", CoCa, CoCaConfig),
     ComponentEntity("model", "anymal", AnyMAL, AnyMALConfig),
     # losses
