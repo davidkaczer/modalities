@@ -55,7 +55,7 @@ val_video_transform:
   config:
     is_training: False
     input_size: 224
-    num_frames: 32
+    num_frames: ${train_video_transform.config.num_frames}
 
 text_transform:
   component_key: transform
@@ -191,7 +191,7 @@ vision_encoder_model:
   config:
     sample_key: videos
     prediction_key: vision_embeddings
-    num_video_frames: 32
+    num_video_frames: ${train_video_transform.config.num_frames}
     img_size: ${train_video_transform.config.input_size}
     n_classes: Null # Disable vision transformer head
     n_layer: 3
