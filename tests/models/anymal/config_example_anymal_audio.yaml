@@ -90,16 +90,33 @@ train_dataset:
     resample: true
     shuffle_buffer: 10_000
 
+val_coco_dataset_builder:
+  component_key: dataset
+  variant_key: web_dataset_builder
+  config:
+    urls: "/nm-raid/video/multimodal_data/audio/commonvoice_17_dev_wav_000000.tar"
+    modality_key_mapping:
+      TEXT: ["transcript.txt", "input_ids"]
+      AUDIO: ["wav", "audio"]
+    modality_transforms:
+      TEXT:
+        instance_key: text_transform
+        pass_type: BY_REFERENCE
+      AUDIO:
+        instance_key: train_audio_transform
+        pass_type: BY_REFERENCE
+    num_samples: 10 # 566_748
+
 val_dataset:
   component_key: dataset
   variant_key: web_dataset
   config:
     builders:
-      - instance_key: train_coco_dataset_builder
+      - instance_key: val_coco_dataset_builder
         pass_type: BY_REFERENCE
     shardshuffle: 1000
-    repeat: true
-    resample: true
+    repeat: false
+    resample: false
     shuffle_buffer: 10_000
 
 train_dataloader:
@@ -149,40 +166,97 @@ checkpoint_saving:
         k: -1 # -1 to save all checkpoints
     checkpoint_saving_execution:
       component_key: checkpoint_saving_execution
-      variant_key: fsdp
+      variant_key: torch
       config:
         checkpoint_path: ${settings.paths.checkpointing_path}
-        global_rank: ${settings.cuda_env.global_rank}
         experiment_id: ${settings.experiment_id}
 
 wrapped_model:
   component_key: model
-  variant_key: fsdp_wrapped
+  variant_key: torch_model
   config:
     model:
       instance_key: model
       pass_type: BY_REFERENCE
-    sync_module_states: true
-    mixed_precision_settings: BF_16
-    sharding_strategy: FULL_SHARD
-    block_names: [GPT2Block]
+    device: 0
+    precision: BF16
+
+audio_encoder_model:
+  component_key: model
+  variant_key: aut
+  config:
+    sample_key: audio
+    prediction_key: modality_embeddings
+    block_size: ${train_audio_transform.config.block_size_audio_encoder}
+    n_mels: 128
+    n_embd: 512
+    n_heads: 4
+    n_conformer_blocks: 3
+    attention_config:
+      attention_engine_type: default_attention
+    pointwise_conv_kernel_size: 1
+    depthwise_conv_kernel_size: 31
+
+text_decoder_model:
+  component_key: model
+  variant_key: gpt2
+  config:
+    sample_key: ${settings.referencing_keys.sample_key}
+    poe_type: ABSOLUTE
+    block_size: ${settings.training.sequence_length}
+    prediction_key: ${settings.referencing_keys.prediction_key}
+    vocab_size: 50304 # GPT-2 vocab_size of 50257, padded up to nearest multiple of 64 for efficiency
+    n_layer: 12
+    n_head_q: 12
+    n_head_kv: 12
+    ffn_hidden: 2048
+    n_embd: 768
+    dropout: 0.0
+    bias: true # True: bias in Linears, like GPT-2. False: a bit better and faster
+    attention_config:
+      qkv_transforms: []
+        # - type_hint: RotaryTransform
+        #   config:
+        #     n_embd: ${model.config.n_embd}
+        #     n_head: ${model.config.n_head_q} #it has to be head_q here
+        #     seq_length_dim: -2
+      attention_implementation: dao_flash
+    activation_type: gelu
+    weight_init:
+      mean: 0.0
+      std: 0.02
+    attention_norm:
+      component_key: layer_norm
+      variant_key: rms_norm
+      config:
+        ndim: ${text_decoder_model.config.n_embd}
+        bias: true
+        epsilon: 1e-5
+    ffn_norm:
+      component_key: layer_norm
+      variant_key: rms_norm
+      config:
+        ndim: ${text_decoder_model.config.n_embd}
+        bias: true
+        epsilon: 1e-5
+    lm_head_norm:
+      component_key: layer_norm
+      variant_key: rms_norm
+      config:
+        ndim: ${text_decoder_model.config.n_embd}
+        bias: true
+        epsilon: 1e-5
 
 model:
   component_key: model
   variant_key: anymal
   config:
-    audio_encoder_config:
-      sample_key: audio
-      prediction_key: modality_embeddings
-      block_size: ${train_audio_transform.config.block_size_audio_encoder}
-      n_mels: 128
-      n_embd: 512
-      n_heads: 4
-      n_conformer_blocks: 3
-      attention_config:
-        attention_engine_type: default_attention
-      pointwise_conv_kernel_size: 1
-      depthwise_conv_kernel_size: 31
+    audio_encoder:
+      instance_key: audio_encoder_model
+      pass_type: BY_REFERENCE
+    text_decoder:
+      instance_key: text_decoder_model
+      pass_type: BY_REFERENCE
     audio_projector_config:
       n_embd: 768
       n_head: 8
@@ -195,55 +269,9 @@ model:
       dropout: 0.0
       attention_config:
         attention_engine_type: default_attention
-    text_decoder_config:
-      sample_key: ${settings.referencing_keys.sample_key}
-      poe_type: ABSOLUTE
-      block_size: ${settings.training.sequence_length}
-      prediction_key: ${settings.referencing_keys.prediction_key}
-      vocab_size: 50304 # GPT-2 vocab_size of 50257, padded up to nearest multiple of 64 for efficiency
-      n_layer: 12
-      n_head_q: 12
-      n_head_kv: 12
-      ffn_hidden: 2048
-      n_embd: 768
-      dropout: 0.0
-      bias: true # True: bias in Linears, like GPT-2. False: a bit better and faster
-      attention_config:
-        qkv_transforms: []
-          # - type_hint: RotaryTransform
-          #   config:
-          #     n_embd: ${model.config.n_embd}
-          #     n_head: ${model.config.n_head_q} #it has to be head_q here
-          #     seq_length_dim: -2
-      attention_implementation: dao_flash
-      activation_type: gelu
-      weight_init:
-        mean: 0.0
-        std: 0.02
-      attention_norm:
-        component_key: layer_norm
-        variant_key: rms_norm
-        config:
-          ndim: ${model.config.text_decoder_config.n_embd}
-          bias: true
-          epsilon: 1e-5
-      ffn_norm:
-        component_key: layer_norm
-        variant_key: rms_norm
-        config:
-          ndim: ${model.config.text_decoder_config.n_embd}
-          bias: true
-          epsilon: 1e-5
-      lm_head_norm:
-        component_key: layer_norm
-        variant_key: rms_norm
-        config:
-          ndim: ${model.config.text_decoder_config.n_embd}
-          bias: true
-          epsilon: 1e-5
-    prediction_key: logits
+    audio_encoder_n_embd: ${audio_encoder_model.config.n_embd}
+    prediction_key: ${settings.referencing_keys.prediction_key}
     training_stage: MODALITY_ALIGNMENT
-    #text_decoder_checkpoint_path: /path/to/checkpoint.bin
 
 loss_fn:
   - component_key: loss
@@ -280,9 +308,9 @@ scheduler:
 
 gradient_clipper:
   component_key: gradient_clipper
-  variant_key: fsdp
+  variant_key: torch
   config:
-    wrapped_model:
+    model:
       instance_key: wrapped_model
       pass_type: BY_REFERENCE
     norm_type: P2_NORM

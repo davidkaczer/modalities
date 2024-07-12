@@ -89,6 +89,7 @@ from modalities.loss_functions import (
 )
 from modalities.models.anymal.anymal_model import AnyMAL, AnyMALConfig
 from modalities.models.anymal.collator import AnyMALCollateFnConfig, AnyMALCollatorFn
+from modalities.models.audio_transformer.audio_transformer_model import AudioTransformer, AudioTransformerConfig
 from modalities.models.coca.coca_model import CoCa, CoCaConfig
 from modalities.models.coca.collator import CoCaCollateFnConfig, CoCaCollatorFn
 from modalities.models.components.layer_norms import LayerNormConfig, RMSLayerNorm, RMSLayerNormConfig
@@ -102,6 +103,7 @@ from modalities.models.huggingface.huggingface_models import (
 # from modalities.models.mamba.mamba_config import MambaLLMConfig
 # from modalities.models.mamba.mamba_model import MambaLLM
 from modalities.models.model_factory import ModelFactory
+from modalities.models.vision_transformer.vision_transformer_model import VisionTransformer, VisionTransformerConfig
 from modalities.optimizers.lr_schedulers import DummyLRScheduler
 from modalities.optimizers.optimizer_factory import OptimizerFactory
 from modalities.tokenization.tokenizer_wrapper import PreTrainedHFTokenizer, PreTrainedSPTokenizer
@@ -139,6 +141,8 @@ COMPONENTS = [
     ComponentEntity("model", "torch_model", ModelFactory.get_torch_model, TorchModelConfig),
     ComponentEntity("model", "coca", CoCa, CoCaConfig),
     ComponentEntity("model", "anymal", AnyMAL, AnyMALConfig),
+    ComponentEntity("model", "vit", VisionTransformer, VisionTransformerConfig),
+    ComponentEntity("model", "aut", AudioTransformer, AudioTransformerConfig),
     # losses
     ComponentEntity("loss", "cross_entropy_loss", CrossEntropyLoss, CrossEntropyLossConfig),
     ComponentEntity("loss", "nce_loss", NCELoss, NCELossConfig),

@@ -35,32 +35,27 @@ collate_fn:
   variant_key: anymal_collator
   config:
     sample_keys:
-      - images
+      - videos
       - ${settings.referencing_keys.sample_key}
     n_modality_tokens: ${model.config.vision_projector_config.n_latents}
     text_sample_key: ${settings.referencing_keys.sample_key}
     text_target_key: ${settings.referencing_keys.target_key}
 
-train_image_transform:
+train_video_transform:
   component_key: transform
-  variant_key: image_transform
+  variant_key: video_transform
   config:
     is_training: True
-    input_size: 256
-    crop_mode: 'center'
-    mean: [0.48145466,0.4578275,0.40821073]
-    std: [0.26862954,0.26130258,0.27577711]
+    input_size: 224
+    num_frames: 32
 
-val_image_transform:
+val_video_transform:
   component_key: transform
-  variant_key: image_transform
+  variant_key: video_transform
   config:
     is_training: False
-    input_size: 256
-    crop_mode: 'center'
-    mean: [0.48145466,0.4578275,0.40821073]
-    std: [0.26862954,0.26130258,0.27577711]
-    hflip: 0.0
+    input_size: 224
+    num_frames: 32
 
 text_transform:
   component_key: transform
@@ -74,18 +69,18 @@ train_coco_dataset_builder:
   component_key: dataset
   variant_key: web_dataset_builder
   config:
-    urls: "/nm-raid/video/multimodal_data/coco_captions/data/train/{000000..000011}.tar"
+    urls: "/nm-raid/video/multimodal_data/youcook2/training/{000000..000019}.tar"
     modality_key_mapping:
-      TEXT: ["json_text0", "input_ids"]
-      IMAGE: ["jpg", "images"]
+      TEXT: ["json", "input_ids"]
+      VIDEO: ["mp4", "videos"]
     modality_transforms:
-      IMAGE:
-        instance_key: train_image_transform
+      VIDEO:
+        instance_key: train_video_transform
         pass_type: BY_REFERENCE
       TEXT:
         instance_key: text_transform
         pass_type: BY_REFERENCE
-    num_samples: 10 # 566_748
+    num_samples: 4
 
 train_dataset:
   component_key: dataset
@@ -103,13 +98,13 @@ val_coco_dataset_builder:
   component_key: dataset
   variant_key: web_dataset_builder
   config:
-    urls: "/nm-raid/video/multimodal_data/coco_captions/data/val/{000000..000004}.tar"
+    urls: "/nm-raid/video/multimodal_data/youcook2/validation/{000000..000007}.tar"
     modality_key_mapping:
-      TEXT: ["json_text0", "input_ids"]
-      IMAGE: ["jpg", "images"]
+      TEXT: ["json", "input_ids"]
+      VIDEO: ["mp4", "videos"]
     modality_transforms:
-      IMAGE:
-        instance_key: val_image_transform
+      VIDEO:
+        instance_key: train_video_transform
         pass_type: BY_REFERENCE
       TEXT:
         instance_key: text_transform
@@ -194,9 +189,10 @@ vision_encoder_model:
   component_key: model
   variant_key: vit
   config:
-    sample_key: images
+    sample_key: videos
     prediction_key: vision_embeddings
-    img_size: ${train_image_transform.config.input_size}
+    num_video_frames: 32
+    img_size: ${train_video_transform.config.input_size}
     n_classes: Null # Disable vision transformer head
     n_layer: 3
     attention_config:
@@ -278,7 +274,7 @@ model:
       n_self_attn_layers_per_block: 1
       n_latents: 64
       n_frames: 1
-      block_size: 196
+      block_size: 64
       ffn_hidden: 3072
       bias: true
       dropout: 0.0
