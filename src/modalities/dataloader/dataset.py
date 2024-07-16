@@ -26,6 +26,7 @@ from modalities.config.lookup_enum import LookupEnum
 from modalities.config.pydanctic_if_types import PydanticThirdPartyTypeIF
 from modalities.dataloader.create_packed_data import EmbeddedStreamData
 from modalities.dataloader.large_file_lines_reader import LargeFileLinesReader
+from modalities.dataloader.utils import audio_loader, video_loader
 from modalities.tokenization.tokenizer_wrapper import TokenizerWrapper
 from modalities.util import flatten_dict
 
@@ -741,8 +742,8 @@ class MultimodalWebDatasetBuilder:
         self.modality_to_decode_fn = {
             ModalityEnum.TEXT: None,
             ModalityEnum.IMAGE: "pil",
-            ModalityEnum.VIDEO: wds.torch_video,
-            ModalityEnum.AUDIO: wds.torch_audio,
+            ModalityEnum.VIDEO: video_loader,
+            ModalityEnum.AUDIO: audio_loader,
         }
 
         self.additional_extreacted_keys = []
