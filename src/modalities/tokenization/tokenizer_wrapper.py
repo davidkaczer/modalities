@@ -19,7 +19,6 @@ class TokenizerWrapper(ABC):
     def get_token_id(self, token: str) -> int:
         raise NotImplementedError
 
-
     def get_token_id(self, token: str) -> int:
         raise NotImplementedError
 
@@ -29,6 +28,7 @@ class PreTrainedHFTokenizer(TokenizerWrapper):
         self, pretrained_model_name_or_path: str, max_length: int, truncation: bool = True, padding: str = "max_length"
     ) -> None:
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
         self.max_length = max_length
         self.truncation = truncation
         self.padding = padding
@@ -46,11 +46,9 @@ class PreTrainedHFTokenizer(TokenizerWrapper):
         )["input_ids"]
         return tokens
 
-
     def decode(self, token_ids: List[int]) -> str:
         decoded_text = self.tokenizer.decode(token_ids)
         return decoded_text
-
 
     def get_token_id(self, token: str) -> int:
         token_id = self.tokenizer.convert_tokens_to_ids(token)

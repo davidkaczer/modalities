@@ -30,15 +30,33 @@ class AnyMALCollatorFn(CollateFnIF):
             sample_key: torch.stack([torch.tensor(d[sample_key]) for d in batch]) for sample_key in self.sample_keys
         }
 
+        """
+        target
+        x x x x x An apple   on    the table
+
+        sample
+        x x x x x x   An   apple   on   the
+
+        where "x x x x x x" are the modality tokens
+        """
+
         # Create target for text input
         targets = {}
-        targets[self.text_target_key] = samples[self.text_sample_key][:, 1:].clone().detach()
-        B, L = targets[self.text_target_key].size()
+        # since the sample tokens will be prepended with the modality tokens,
+        # the first target token is the first sample token
+        # this is in contrast to purely text generation,
+        # in which the first target token is the second sample token
+        targets[self.text_target_key] = samples[self.text_sample_key].clone().detach()
+        if "attention_mask" in batch[0]:
+            # all text tokens should be part of the target
+            targets["attention_mask"] = torch.stack([torch.tensor(d["attention_mask"]) for d in batch])
 
-        # prepend `ignore_index` equal to n_modality_tokens
+        B, L = targets[self.text_target_key].size()
+        # prepend `ignore_index` equal to n_modality_tokens - 1
         # see ignore_index: https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
-        ignore = torch.ones(B, self.n_modality_tokens, dtype=targets[self.text_target_key].dtype) * (-100)
-        targets[self.text_target_key] = torch.cat((ignore, targets[self.text_target_key]), axis=1)
+        ignore = torch.ones(B, self.n_modality_tokens - 1, dtype=targets[self.text_target_key].dtype)
+        targets[self.text_target_key] = torch.cat((ignore * (-100), targets[self.text_target_key]), axis=1)
+        targets["attention_mask"] = torch.cat(((1 - ignore), targets["attention_mask"]), axis=1)
 
         samples[self.text_sample_key] = samples[self.text_sample_key][:, :-1].clone().detach()
         return DatasetBatch(targets=targets, samples=samples)

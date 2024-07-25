@@ -2,13 +2,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import torch
-
 from pydantic import BaseModel, ConfigDict
-from transformers import AutoModelForCausalLM, AutoModelForMaskedLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoModelForMaskedLM, AutoTokenizer, CLIPVisionModel
 
 from modalities.config.lookup_enum import LookupEnum
 from modalities.models.model import NNModel
-
 
 # Huggingface Model dependencies
 #
@@ -26,6 +24,7 @@ from modalities.models.model import NNModel
 class HuggingFaceModelTypes(LookupEnum):
     AutoModelForCausalLM = AutoModelForCausalLM
     AutoModelForMaskedLM = AutoModelForMaskedLM
+    CLIPVisionModel = CLIPVisionModel
 
 
 class HuggingFacePretrainedModelConfig(BaseModel):
@@ -43,16 +42,15 @@ class HuggingFacePretrainedModelConfig(BaseModel):
 
 
 class HuggingFacePretrainedModel(NNModel):
-
     def __init__(
-            self,
-            model_type: HuggingFaceModelTypes,
-            model_name: str,
-            prediction_key: str,
-            huggingface_prediction_subscription_key: str,
-            sample_key: str,
-            model_args: Optional[Any] = None,
-            kwargs: Optional[Any] = None,
+        self,
+        model_type: HuggingFaceModelTypes,
+        model_name: str,
+        prediction_key: str,
+        huggingface_prediction_subscription_key: str,
+        sample_key: str,
+        model_args: Optional[Any] = None,
+        kwargs: Optional[Any] = None,
     ):
         super().__init__()
         if model_args is None:
@@ -70,9 +68,14 @@ class HuggingFacePretrainedModel(NNModel):
             model_name, local_files_only=False, *model_args, **kwargs
         )
 
-    def forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        output = self.huggingface_model.forward(inputs[self.sample_key])
+    def forward(
+        self, inputs: Dict[str, torch.Tensor], forward_kwargs: Dict[str, torch.Tensor] = dict()
+    ) -> Dict[str, torch.Tensor]:
+        output = self.huggingface_model.forward(inputs[self.sample_key], **forward_kwargs)
         return {self.prediction_key: output[self.huggingface_prediction_subscription_key]}
+
+    def get_input_embeddings(self):
+        return self.huggingface_model.get_input_embeddings()
 
     @property
     def fsdp_block_names(self) -> List[str]:

@@ -1,6 +1,7 @@
 from typing import Dict
 
 import torch
+from peft import LoraConfig, get_peft_model
 from pydantic import BaseModel
 from torch import nn
 
@@ -101,7 +102,6 @@ class AnyMAL(NNModel):
 
         # Freeze parameters and/or initialize LoRA based on training stage
         # currently does not work with FSDP
-        """
         for param in self.modality_encoder.parameters():
             param.requires_grad = False
 
@@ -114,18 +114,26 @@ class AnyMAL(NNModel):
                 r=8,
                 lora_alpha=32,
                 lora_dropout=0.1,
-                target_modules=["q_attn", "k_attn", "v_attn", "c_proj", "c_fc"] # TODO: make these configurable
+                target_modules=["q_attn", "k_attn", "v_attn", "c_proj", "c_fc"],  # TODO: make these configurable
             )
             self.text_decoder = get_peft_model(self.text_decoder, peft_config)
-        """
 
     def forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        modality_emb = self.modality_encoder(inputs)[self.modality_prediction_key]
+        forward_kwargs = {"output_hidden_states": True}
+        layer_idx = -2  # TODO make this configurable
+        modality_emb = self.modality_encoder(inputs, forward_kwargs)[self.modality_prediction_key][layer_idx][:, 1:, :]
         proj_modality_emb = self.modality_projector(modality_emb)
-        text_emb = self.text_decoder.get_input_embeddings()(inputs[self.text_decoder.sample_key])
-        # prepend projected modality embeddings to token embeddings
-        input_emb = torch.cat((proj_modality_emb, text_emb), axis=1)
-        inputs["input_emb"] = input_emb
 
-        text_logits = self.text_decoder(inputs)[self.text_decoder.prediction_key]
+        if inputs[self.text_decoder.sample_key] is not None:
+            text_emb = self.text_decoder.get_input_embeddings()(inputs[self.text_decoder.sample_key])
+            # prepend projected modality embeddings to token embeddings
+            input_emb = torch.cat((proj_modality_emb, text_emb), axis=1)
+        else:
+            input_emb = proj_modality_emb
+
+        pos = torch.arange(0, input_emb.shape[1], dtype=torch.long, device=input_emb.device)
+        dec_inputs = {"input_ids": None}
+        dec_inputs_kwargs = {"inputs_embeds": input_emb, "position_ids": pos}
+
+        text_logits = self.text_decoder(dec_inputs, dec_inputs_kwargs)[self.text_decoder.prediction_key]
         return {self.prediction_key: text_logits}
