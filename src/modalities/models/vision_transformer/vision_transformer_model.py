@@ -130,6 +130,7 @@ class PerceiverConfig(BaseModel):
     bias: bool = True
     dropout: Annotated[float, Field(ge=0.0)] = 0.0
     attention_config: AttentionConfig
+    output_n_embd: Annotated[int, Field(ge=1)] = 768
 
 
 class Perceiver(nn.Module):
@@ -165,6 +166,7 @@ class Perceiver(nn.Module):
         bias: bool = True,
         dropout: float = 0.0,
         attention_config: AttentionConfig = None,
+        output_n_embd: int = 768,
     ) -> None:
         super().__init__()
         self.positional_embedding_fn = nn.Embedding(num_embeddings=block_size, embedding_dim=n_embd)
@@ -190,6 +192,10 @@ class Perceiver(nn.Module):
         )
         self.latents = nn.Parameter(torch.randn(n_latents, n_embd))  # [R,d]
         self.dropout = nn.Dropout(dropout)
+        if output_n_embd != n_embd:
+            self.output_proj = nn.Linear(n_embd, output_n_embd, bias=False)
+        else:
+            self.output_proj = None
 
     def forward(self, x: torch.Tensor):
         B = x.shape[0]
@@ -202,6 +208,8 @@ class Perceiver(nn.Module):
         latents = self.latents.repeat(B, 1, 1)  # [b,R,d] with R<<T*S
         for block in self.perceiver_blocks:
             latents = block(x, latents)
+        if self.output_proj:
+            latents = self.output_proj(latents)
         return latents
 
 

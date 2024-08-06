@@ -226,6 +226,7 @@ model:
       dropout: 0.1
       attention_config:
         attention_engine_type: default_attention
+      output_n_embd: 768
     prediction_key: ${settings.referencing_keys.prediction_key}
     training_stage: MODALITY_ALIGNMENT
 
