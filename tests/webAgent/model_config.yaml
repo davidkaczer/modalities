@@ -1,0 +1,27 @@
+settings:
+  referencing_keys:
+    sample_key: input_ids
+    prediction_key: logits
+  device: 0
+  sequence_length: 2048
+
+huggingface_pretrained_encoder_decoder_model:
+  component_key: model
+  variant_key: huggingface_pretrained_encoder_decoder_model
+  config:
+    model_type: LongT5ForConditionalGeneration
+    model_name: google/long-t5-tglobal-base
+    sample_key: ${settings.referencing_keys.sample_key}
+    prediction_key: ${settings.referencing_keys.prediction_key}
+    huggingface_prediction_subscription_key: logits
+
+
+webAgent_llm_component_llama:
+  component_key: webAgent_llm_component
+  variant_key: llama3.1
+  config:
+    device: ${settings.device}
+    llm_name: meta-llama/Meta-Llama-3-8B-Instruct
+    html_model: 
+      instance_key: huggingface_pretrained_encoder_decoder_model
+      pass_type: BY_REFERENCE
