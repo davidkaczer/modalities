@@ -29,7 +29,7 @@ def get_model_from_config(config: Dict, model_type: ModelTypeEnum):
 
         class PydanticConfig(BaseModel):
             checkpointed_model: PydanticPytorchModuleType
-        
+
     elif model_type.value == "webAgent_llm_component_llama":
 
         class PydanticConfig(BaseModel):
