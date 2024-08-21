@@ -97,7 +97,8 @@ from modalities.utils.number_conversion import (
     NumStepsFromNumTokensConfig,
     NumTokensFromNumStepsConfig,
 )
-
+from modalities.webagent_llm_part.config import WebAgentLLMConfig
+from modalities.webagent_llm_part.webagent_llm_component import WebAgentLLMComponent
 
 @dataclass
 class ComponentEntity:
@@ -113,6 +114,9 @@ COMPONENTS = [
     ComponentEntity("model", "mamba", MambaLLM, MambaLLMConfig),
     ComponentEntity(
         "model", "huggingface_pretrained_model", HuggingFacePretrainedModel, HuggingFacePretrainedModelConfig
+    ),
+    ComponentEntity(
+        "model", "webAgentLLM", WebAgentLLMComponent, WebAgentLLMConfig
     ),
     ComponentEntity(
         "model",

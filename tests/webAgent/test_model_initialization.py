@@ -1,12 +1,8 @@
 import os
 from pathlib import Path
 
-from modalities.config.component_factory import ComponentFactory
-from modalities.registry.components import COMPONENTS
-from modalities.registry.registry import Registry
+from modalities.models.utils import get_model_from_config, ModelTypeEnum
 import pytest
-import torch
-from modalities.webagent_llm_part.utils import get_concatenated_model
 from modalities.config.config import load_app_config_dict
 from modalities.models.model import NNModel
 from tests.conftest import _ROOT_DIR
@@ -25,7 +21,7 @@ def set_env():
 def config_file_path() -> Path:
 
     config_file_path = _ROOT_DIR / Path(
-        "tests/webAgent/model_config.yaml"
+        "config_files/training/config_lorem_ipsum_span_masking_T5.yaml"
     )
     return config_file_path
 
@@ -36,6 +32,11 @@ def config_dict_without_checkpoint_path(config_file_path: Path) -> dict:
 
 
 def test_initialize_llm_model(set_env, config_dict_without_checkpoint_path: dict) -> NNModel:
-    model = get_concatenated_model(config_dict_without_checkpoint_path)
+    model = get_model_from_config(config=config_dict_without_checkpoint_path, model_type=ModelTypeEnum.WEBAGENT_LLM)
     assert type(model.llm) == transformers.models.llama.modeling_llama.LlamaForCausalLM
     assert type(model.html_model) == modalities.models.huggingface.huggingface_model.HuggingFacePretrainedEncoderDecoderModel
+
+    for name, param in model.llm.named_parameters():
+        assert not param.requires_grad
+    for name, param in model.html_model.named_parameters():
+        assert param.requires_grad

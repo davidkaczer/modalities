@@ -12,6 +12,7 @@ from modalities.registry.registry import Registry
 class ModelTypeEnum(Enum):
     MODEL = "model"
     CHECKPOINTED_MODEL = "checkpointed_model"
+    WEBAGENT_LLM = "webAgent_llm_component_llama"
 
 
 def get_model_from_config(config: Dict, model_type: ModelTypeEnum):
@@ -28,6 +29,11 @@ def get_model_from_config(config: Dict, model_type: ModelTypeEnum):
 
         class PydanticConfig(BaseModel):
             checkpointed_model: PydanticPytorchModuleType
+        
+    elif model_type.value == "webAgent_llm_component_llama":
+
+        class PydanticConfig(BaseModel):
+            webAgent_llm_component_llama: PydanticPytorchModuleType
 
     else:
         raise NotImplementedError()

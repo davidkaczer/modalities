@@ -15,7 +15,6 @@ from modalities.config.pydanctic_if_types import (
     PydanticPytorchDeviceType,
     PydanticPytorchModuleType,
     PydanticTextInferenceComponentType,
-    PydanticWebAgentLLMComponentType,
     PydanticTokenizerIFType,
 )
 from modalities.config.utils import parse_torch_device
@@ -93,15 +92,3 @@ class TextGenerationInstantiationModel(BaseModel):
 
     text_inference_component: PydanticTextInferenceComponentType
     settings: TextGenerationSettings
-
-class WebAgentLLMInstantiationModel(BaseModel):
-    class WebAgentLLMSettings(BaseModel):
-        device: PydanticPytorchDeviceType
-        referencing_keys: Dict[str, str]
-
-        @field_validator("device", mode="before")
-        def parse_device(cls, device) -> PydanticPytorchDeviceType:
-            return parse_torch_device(device)
-
-    webAgent_llm_component_llama: PydanticWebAgentLLMComponentType
-    settings: WebAgentLLMSettings

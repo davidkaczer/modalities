@@ -3,7 +3,7 @@ settings:
   config_file_path: ${modalities_env:config_file_path}
   referencing_keys:
     sample_key: input_ids
-    target_key: target_ids
+    target_key: logits
   training:
     training_log_interval_in_steps: 48
     checkpointing_interval_in_steps: 48
@@ -168,7 +168,7 @@ wrapped_model:
   variant_key: fsdp_wrapped
   config:
     model:
-      instance_key: model_raw
+      instance_key: webAgent_llm_component_llama
       pass_type: BY_REFERENCE
     sync_module_states: true
     mixed_precision_settings: BF_16
@@ -187,6 +187,19 @@ model_raw:
     prediction_key: logits
     huggingface_prediction_subscription_key: logits
 
+webAgent_llm_component_llama:
+  component_key: model
+  variant_key: webAgentLLM
+  config:
+    sample_key: ${settings.referencing_keys.sample_key}
+    prediction_key: ${settings.referencing_keys.target_key}
+    html_tokenizer: 
+      instance_key: tokenizer
+      pass_type: BY_REFERENCE
+    llm_name: meta-llama/Meta-Llama-3-8B-Instruct
+    html_model: 
+      instance_key: model_raw
+      pass_type: BY_REFERENCE
 #scheduler:
 #  component_key: scheduler
 #  variant_key: step_lr
