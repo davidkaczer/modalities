@@ -27,10 +27,14 @@ class WebAgentLLMComponent(NNModel):
         # freeze weights of LLM
         for name, param in self.llm.named_parameters():
             param.requires_grad = False
+        # known issue: LLaMA tokenizer doesn't define pad_token_id
+        if self.llm_tokenizer.pad_token_id is None:
+            self.llm_tokenizer.pad_token_id = self.llm_tokenizer.eos_token_id
 
     def forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        output = self.html_model.forward(inputs[self.sample_key])
-        text_out_from_html = self.html_tokenizer.batch_decode(output[self.prediction_key])
+        # output = self.html_model.forward(inputs=inputs)
+        output = self.html_model.generate(inputs)[0]
+        text_out_from_html = self.html_tokenizer.decode(output)
         # padding within batch
         input_ids = self.llm_tokenizer(text_out_from_html, padding=True, truncation=True, return_tensors="pt")[
             self.sample_key

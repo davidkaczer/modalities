@@ -145,7 +145,13 @@ class HuggingFacePretrainedEncoderDecoderModel(NNModel):
         targets: Optional[Dict[str, torch.Tensor]] = None,
     ) -> Dict[str, torch.Tensor]:
         # TODO: refactor so that target_key and decoder_start_token_id can be set in config/obtained automatically
-        decoder_input_ids = self._shift_tokens_right(targets["target_ids"], 1)
+        if targets is None:
+            decoder_input_ids = torch.ones_like(inputs[self.sample_key], dtype=torch.int32)[:, :1].to(
+                self.huggingface_model.device
+            )
+        else:
+            decoder_input_ids = self._shift_tokens_right(targets["target_ids"], 1)
+
         output = self.huggingface_model.forward(
             input_ids=inputs[self.sample_key],
             decoder_input_ids=decoder_input_ids,
@@ -170,6 +176,10 @@ class HuggingFacePretrainedEncoderDecoderModel(NNModel):
         shifted_input_ids = torch.roll(input_ids, 1, dims=1)
         shifted_input_ids[:, 0] = decoder_start_token_id
         return shifted_input_ids
+
+    def generate(self, inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
+        output = self.huggingface_model.generate(input_ids=inputs[self.sample_key])
+        return output
 
     @property
     def fsdp_block_names(self) -> List[str]:

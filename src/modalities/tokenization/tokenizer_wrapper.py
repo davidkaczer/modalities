@@ -2,6 +2,7 @@ from abc import ABC
 from typing import Dict, List, Optional
 
 import sentencepiece as spm
+import torch
 from transformers import AutoTokenizer
 
 
@@ -55,7 +56,7 @@ class PreTrainedHFTokenizer(TokenizerWrapper):
     def special_tokens(self) -> Dict[str, str | List[str]]:
         return self.tokenizer.special_tokens_map
 
-    def tokenize(self, text: str) -> List[int]:
+    def tokenize(self, text: str) -> torch.Tensor:
         tokens = self.tokenizer.__call__(
             text,
             max_length=self.max_length,
