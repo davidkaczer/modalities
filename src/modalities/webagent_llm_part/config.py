@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from modalities.config.pydanctic_if_types import PydanticPytorchModuleType, PydanticTokenizerIFType
@@ -9,3 +11,4 @@ class WebAgentLLMConfig(BaseModel):
     llm_name: str
     html_model: PydanticPytorchModuleType
     html_tokenizer: PydanticTokenizerIFType
+    llm_prompt: Optional[str]

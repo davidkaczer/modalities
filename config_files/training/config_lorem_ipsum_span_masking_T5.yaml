@@ -200,6 +200,8 @@ webAgent_llm_component_llama:
     html_model: 
       instance_key: model_raw
       pass_type: BY_REFERENCE
+    llm_prompt: "You are a helpful assistant.\n"
+
 #scheduler:
 #  component_key: scheduler
 #  variant_key: step_lr

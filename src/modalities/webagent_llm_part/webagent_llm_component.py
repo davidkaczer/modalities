@@ -16,12 +16,14 @@ class WebAgentLLMComponent(NNModel):
         html_tokenizer: TokenizerWrapper,
         sample_key: str,
         prediction_key: str,
+        llm_prompt: str = "",
     ) -> None:
         super().__init__()
         self.html_tokenizer = html_tokenizer
         self.html_model = html_model
         self.llm = AutoModelForCausalLM.from_pretrained(llm_name)
         self.llm_tokenizer = AutoTokenizer.from_pretrained(llm_name)
+        self.llm_prompt = llm_prompt
         self.sample_key = sample_key
         self.prediction_key = prediction_key
         # freeze weights of LLM
@@ -35,9 +37,12 @@ class WebAgentLLMComponent(NNModel):
         # output = self.html_model.forward(inputs=inputs)
         output = self.html_model.generate(inputs)[0]
         text_out_from_html = self.html_tokenizer.decode(output)
+        llm_input = self.create_llm_prompt(text_out_from_html)
         # padding within batch
-        input_ids = self.llm_tokenizer(text_out_from_html, padding=True, truncation=True, return_tensors="pt")[
-            self.sample_key
-        ]
+        input_ids = self.llm_tokenizer(llm_input, padding=True, truncation=True, return_tensors="pt")[self.sample_key]
         output = self.llm.forward(input_ids)
         return {self.prediction_key: output[self.prediction_key]}
+
+    def create_llm_prompt(self, html_model_output: str) -> str:
+        # Separate method so we can do something with templating later
+        return self.llm_prompt + html_model_output
