@@ -2,7 +2,6 @@ from abc import ABC
 from typing import Dict, List, Optional
 
 import sentencepiece as spm
-import torch
 from transformers import AutoTokenizer
 
 
@@ -16,9 +15,6 @@ class TokenizerWrapper(ABC):
     @property
     def vocab_size(self) -> int:
         raise NotImplementedError("Tokenizer must be implemented by a subclass.")
-
-    def get_token_id(self, token: str) -> int:
-        raise NotImplementedError
 
     def get_token_id(self, token: str) -> int:
         raise NotImplementedError
@@ -56,7 +52,7 @@ class PreTrainedHFTokenizer(TokenizerWrapper):
     def special_tokens(self) -> Dict[str, str | List[str]]:
         return self.tokenizer.special_tokens_map
 
-    def tokenize(self, text: str) -> torch.Tensor:
+    def tokenize(self, text: str) -> List[int]:
         tokens = self.tokenizer.__call__(
             text,
             max_length=self.max_length,
