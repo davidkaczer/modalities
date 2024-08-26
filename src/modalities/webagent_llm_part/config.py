@@ -12,3 +12,5 @@ class WebAgentLLMConfig(BaseModel):
     html_model: PydanticPytorchModuleType
     html_tokenizer: PydanticTokenizerIFType
     llm_prompt: Optional[str]
+    llm_temperature: Optional[float]
+    sequence_length: Optional[int]

@@ -200,7 +200,9 @@ webAgent_llm_component_llama:
     html_model: 
       instance_key: model_raw
       pass_type: BY_REFERENCE
-    llm_prompt: "You are a helpful assistant.\n"
+    llm_prompt: "Return the text from the following HTML snippet.\n"
+    llm_temperature: 0.0
+    sequence_length: 128
 
 #scheduler:
 #  component_key: scheduler

@@ -42,7 +42,7 @@ def test_initialize_llm_model(set_env, config_dict_without_checkpoint_path: dict
         assert param.requires_grad
 
 
-def test_webllm_inference(set_env, config_dict_without_checkpoint_path: dict):
+def test_webllm_forward(set_env, config_dict_without_checkpoint_path: dict):
     model = get_model_from_config(config=config_dict_without_checkpoint_path, model_type=ModelTypeEnum.WEBAGENT_LLM)
     tokenizer = model.html_tokenizer
     input_ids = tokenizer.tokenize(["Lorem ipsum"])
@@ -50,3 +50,14 @@ def test_webllm_inference(set_env, config_dict_without_checkpoint_path: dict):
     # so we have to do conversion here
     inputs = {model.sample_key: torch.tensor(input_ids, dtype=torch.int32)}
     model.forward(inputs=inputs)
+
+
+def test_inference(set_env, config_dict_without_checkpoint_path: dict):
+    model = get_model_from_config(config=config_dict_without_checkpoint_path, model_type=ModelTypeEnum.WEBAGENT_LLM)
+    tokenizer = model.html_tokenizer
+    input_ids = tokenizer.tokenize(["<div>Enter email: </div>"])
+    # note that currently, TokenizerWrapper returns a list but model.forward requires a dict of tensors
+    # so we have to do conversion here
+    inputs = {model.sample_key: torch.tensor(input_ids, dtype=torch.int32)}
+    outputs = model.generate(inputs=inputs)
+    print(f"generation output: {outputs}")
