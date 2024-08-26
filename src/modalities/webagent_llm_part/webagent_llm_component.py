@@ -20,6 +20,7 @@ class WebAgentLLMComponent(NNModel):
         llm_prompt: str = "",
         llm_temperature: float = 0.0,
         sequence_length: int = 4096,
+        patch_unk_token: bool = False,
     ) -> None:
         super().__init__()
         self.html_tokenizer = html_tokenizer
@@ -31,6 +32,7 @@ class WebAgentLLMComponent(NNModel):
         self.prediction_key = prediction_key
         self.llm_temperature = llm_temperature
         self.sequence_length = sequence_length
+        self.patch_unk_token = patch_unk_token
         # freeze weights of LLM
         for name, param in self.llm.named_parameters():
             param.requires_grad = False
@@ -42,6 +44,8 @@ class WebAgentLLMComponent(NNModel):
         # output = self.html_model.forward(inputs=inputs)
         output = self.html_model.generate(inputs)[0]
         text_out_from_html = self.html_tokenizer.decode(output)
+        if self.patch_unk_token:
+            text_out_from_html = text_out_from_html.replace("<unk>", "<")
         llm_input = self.create_llm_prompt(text_out_from_html)
         # padding within batch
         input_ids = self.llm_tokenizer(llm_input, padding=True, truncation=True, return_tensors="pt")[self.sample_key]
@@ -57,6 +61,8 @@ class WebAgentLLMComponent(NNModel):
         # remove initial pad token
         output = self.html_model.generate(inputs)[0, 1:]
         text_out_from_html = self.html_tokenizer.decode(output)
+        if self.patch_unk_token:
+            text_out_from_html = text_out_from_html.replace("<unk>", "<")
         llm_input = self.create_llm_prompt(text_out_from_html)
         # padding within batch
         input_ids = self.llm_tokenizer(llm_input, padding=True, truncation=True, return_tensors="pt")[self.sample_key]

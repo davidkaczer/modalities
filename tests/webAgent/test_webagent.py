@@ -60,4 +60,4 @@ def test_inference(set_env, config_dict_without_checkpoint_path: dict):
     # so we have to do conversion here
     inputs = {model.sample_key: torch.tensor(input_ids, dtype=torch.int32)}
     outputs = model.generate(inputs=inputs)
-    print(f"generation output: {outputs}")
+    print(f"\n=== generation output: ===\n{outputs}")

@@ -14,3 +14,4 @@ class WebAgentLLMConfig(BaseModel):
     llm_prompt: Optional[str]
     llm_temperature: Optional[float]
     sequence_length: Optional[int]
+    patch_unk_token: Optional[bool]

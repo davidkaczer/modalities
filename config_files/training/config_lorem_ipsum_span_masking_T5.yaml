@@ -196,13 +196,14 @@ webAgent_llm_component_llama:
     html_tokenizer: 
       instance_key: tokenizer
       pass_type: BY_REFERENCE
-    llm_name: meta-llama/Meta-Llama-3-8B-Instruct
+    llm_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
     html_model: 
       instance_key: model_raw
       pass_type: BY_REFERENCE
     llm_prompt: "Return the text from the following HTML snippet.\n"
     llm_temperature: 0.0
     sequence_length: 128
+    patch_unk_token: true
 
 #scheduler:
 #  component_key: scheduler
