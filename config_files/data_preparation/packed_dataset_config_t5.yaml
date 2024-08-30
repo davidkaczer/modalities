@@ -1,6 +1,6 @@
 settings:
   src_path: data/lorem_ipsum.jsonl
-  dst_path: data/lorem_ipsum.pbin
+  dst_path: data/lorem_ipsum_t5.pbin
   index_path: data/lorem_ipsum.idx
   jq_pattern: .text
   num_cpus: ${node_env:num_cpus}
@@ -13,6 +13,6 @@ tokenizer:
   component_key: tokenizer
   variant_key: pretrained_hf_tokenizer
   config:
-    pretrained_model_name_or_path: data/tokenizer/hf_gpt2
+    pretrained_model_name_or_path: data/tokenizer/tokenizer_t5
     padding: false
     truncation: false
