@@ -193,6 +193,9 @@ class CoCa(NNModel):
         self.epsilon_attn_pool = epsilon_attn_pool
         self.text_decoder_config = text_decoder_config
 
+        if image_encoder_config is None and video_encoder_config is None and audio_encoder_config is None:
+            raise NotImplementedError("At least one non-text encoder must be specified")
+
         self.image_sample_key = None
         if image_encoder_config is not None:
             self.image_sample_key = image_encoder_config.sample_key
